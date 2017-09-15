@@ -1,0 +1,370 @@
+{
+    "schemaVersion":"2.2",
+    "description":"Install, update, or remove the New Relic Infrastructure agent - by Kevin Downs http://linkedin.com/in/kupsand",
+    "parameters":
+    {
+        "action":
+        {
+            "type":"String",
+            "default":"Install",
+            "description":"(Required) Install, remove, or update. Note: update only updates the Infrastructure agent, it doesn't update or change the agent configuration.",
+            "allowedValues":
+            [
+                "Install",
+                "Update",
+                "Remove"
+            ]
+        },
+        "operatingSystem":
+        {
+            "type":"String",
+            "default":"Amazon Linux or CentOS 6 or RHEL 6",
+            "description":"(Required) Select the Operating System.",
+            "allowedValues":
+            [
+                "Amazon Linux or CentOS 6 or RHEL 6",
+                "CentOS 7 or RHEL 7",
+                "Ubuntu 14 - Trusty",
+                "Ubuntu 16 - Xenial",
+                "Windows"
+            ]
+        },
+        "licenseKey":
+        {
+            "type":"String",
+            "default":"c6a2d99dabc808de6dcb6e61510ac2642d7a7320",
+            "description":"(Required) Your New Relic license key.",
+            "maxChars":40
+        },
+        "agentFileLocation":
+        {
+            "type":"String",
+            "default":"https://s3.us-east-2.amazonaws.com/dnaspu-nriagent/newrelic-infra.msi.exe",
+            "description":"(Optional) Only use if you need to install the agent from a non-internet connected instance. Examples: c:\\temp\\newrelic-infra.msi or https://s3.us-east-2.amazonaws.com/mybucket/newrelic-infra.repo",
+            "maxChars":1024
+        },
+        "displayName":
+        {
+            "type":"String",
+            "default":"",
+            "description":"(Optional) Override the auto-generated hostname for reporting. This is useful when you have multiple hosts with the same name, since Infrastructure uses the hostname as the unique identifier for each host.",
+            "maxChars":1024
+        },
+        "proxy":
+        {
+            "type":"String",
+            "default":"",
+            "description":"(Optional) Your system may have firewall rules that require the agent to use a proxy to communicate with New Relic. If so, set the proxy URL in the form https://user:password@hostname:port. Can be HTTP or HTTPS.",
+            "maxChars":1024
+        },
+        "verbose":
+        {
+            "type":"String",
+            "default":"0",
+            "description":"(Optional) When set to 1, enables verbose logging for the agent. This is useful when troubleshooting the agent. When verbose logging is not set to 1, it defaults to off. See also log_file to customize the log file location.",
+            "allowedValues":
+            [
+                "0",
+                "1"
+            ]
+        },
+        "logFile":
+        {
+            "type":"String",
+            "default":"",
+            "description":"(Optional) To log to another location, provide a full path and file name.",
+            "maxChars":1024
+        },
+        "logToStdout":
+        {
+            "type":"String",
+            "default":"true",
+            "description":"(Optional) When this option is true or not explicitly set, the agent logs to the console, which is typically configured to write to system log files. If you have a log file set through the log_file option, the agent writes to both the specified file and the console when log_to_stdout is true or not explicitly set. Setting this option to false restricts output to the specified file only.",
+            "allowedValues":
+            [
+                "true",
+                "false"
+            ]
+        },
+        "customAttributeOneName":
+        {
+            "type":"String",
+            "default":"",
+            "description":"(Optional) A custom attributes is used to annotate the data from this agent instance. Example: environment",
+            "maxChars":1024
+        },
+        "customAttributeOneValue":
+        {
+            "type":"String",
+            "default":"",
+            "description":"(Optional) A custom attributes is used to annotate the data from this agent instance. Example: production",
+            "maxChars":1024
+        },
+        "customAttributeTwoName":
+        {
+            "type":"String",
+            "default":"",
+            "description":"(Optional) A custom attributes is used to annotate the data from this agent instance. Example: service",
+            "maxChars":1024
+        },
+        "customAttributeTwoValue":
+        {
+            "type":"String",
+            "default":"",
+            "description":"(Optional) A custom attributes is used to annotate the data from this agent instance. Example: login service",
+            "maxChars":1024
+        },
+        "customAttributeThreeName":
+        {
+            "type":"String",
+            "default":"",
+            "description":"(Optional) A custom attributes is used to annotate the data from this agent instance. Example: team",
+            "maxChars":1024
+        },
+        "customAttributeThreeValue":
+        {
+            "type":"String",
+            "default":"",
+            "description":"(Optional) A custom attributes is used to annotate the data from this agent instance. Example: alpha-team",
+            "maxChars":1024
+        }
+    },
+    "mainSteps":
+    [
+        {
+            "action":"aws:runPowerShellScript",
+            "precondition":
+            {
+                "StringEquals": ["platformType", "Windows"]
+            },
+            "name":"WindowsInstallNewRelicInfrastructureAgent",
+            "inputs":
+            {
+                "runCommand":
+                [
+                    "# Set the path to the configuration file",
+                    "$nri_config_file = 'C:\\Program Files\\New Relic\\newrelic-infra\\newrelic-infra.yml'",
+
+                    "# Get the New Relic Infrastructure agent",
+                    "if ('{{ action }}' -eq 'Install') {",
+                        "if ('{{ agentFileLocation }}' -ne '') {",
+                            "$msiFileName = '{{ agentFileLocation }}'",
+                            "if ( $msiFileName.Substring(0,4) -eq 'http') {",
+                                "wget $msiFileName -OutFile c:\\Users\\Administrator\\Documents\\newrelic-infra.msi",
+                            "}",
+                            "Else {",
+                                "Copy-Item $msiFileName c:\\Users\\Administrator\\Documents\\newrelic-infra.msi",
+                            "}",
+                        "}",
+                        "Else {",
+                            "wget https://download.newrelic.com/infrastructure_agent/windows/newrelic-infra.msi -OutFile c:\\Users\\Administrator\\Documents\\newrelic-infra.msi",
+                        "}",
+
+                        "# Install the agent",
+                        "msiexec.exe /qn /i c:\\Users\\Administrator\\Documents\\newrelic-infra.msi",
+
+                        "# Need a little bit of time to allow the agent/directory/service to install - 5 seconds",
+                        "Start-Sleep -s 5",
+
+                        "# Set up the configuration file",
+                        "echo \"license_key: {{licenseKey}}\" | Out-File -FilePath $nri_config_file -Encoding ASCII",
+
+                        "# If entered, add the Display name",
+                        "if ('{{ displayName }}' -ne '') {",
+                            "echo \"display_name: {{displayName}}\" | Out-File -FilePath $nri_config_file -Encoding ASCII -Append",
+                        "}",
+
+                        "# If entered, set the Proxy",
+                        "if ('{{ proxy }}' -ne '') {",
+                            "echo \"proxy: {{proxy}}\" | Out-File -FilePath $nri_config_file -Encoding ASCII -Append",
+                        "}",
+
+                        "# Set verbose",
+                        "echo \"verbose: {{verbose}}\" | Out-File -FilePath $nri_config_file -Encoding ASCII -Append",
+
+                        "# If entered, set the Log File",
+                        "if ('{{ logFile }}' -ne '') {",
+                            "echo \"log_file: {{logFile}}\" | Out-File -FilePath $nri_config_file -Encoding ASCII -Append",
+                        "}",
+
+                        "# Set log to stdout",
+                        "echo \"log_to_stdout: {{logToStdout}}\" | Out-File -FilePath $nri_config_file -Encoding ASCII -Append",
+
+                        "# If entered, add custom attribute(s)",
+                        "if ('{{ customAttributeOneName }}' -ne '') {",
+                            "if ('{{ customAttributeOneValue }}' -ne '') {",
+                                "echo \"custom_attributes:\" | Out-File -FilePath $nri_config_file -Encoding ASCII -Append",
+                                "echo \"  {{customAttributeOneName}}: {{customAttributeOneValue}}\" | Out-File -FilePath $nri_config_file -Encoding ASCII -Append",
+                                "}",
+                        "}",
+
+                        "if ('{{ customAttributeOneName }}' -ne '') {",
+                            "if ('{{ customAttributeTwoName }}' -ne '') {",
+                                "if ('{{ customAttributeTwoValue }}' -ne '') {",
+                                    "echo \"  {{customAttributeTwoName}}: {{customAttributeTwoValue}}\" | Out-File -FilePath $nri_config_file -Encoding ASCII -Append",
+                                "}",
+                            "}",
+                        "}",
+
+                        "if ('{{ customAttributeOneName }}' -ne '') {",
+                            "if ('{{ customAttributeThreeName }}' -ne '') {",
+                                "if ('{{ customAttributeThreeValue }}' -ne '') {",
+                                    "echo \"  {{customAttributeThreeName}}: {{customAttributeThreeValue}}\" | Out-File -FilePath $nri_config_file -Encoding ASCII -Append",
+                                "}",
+                            "}",
+                        "}",
+
+                        "# Start the agent service",
+                        "net start newrelic-infra",
+                    "}",
+                    "ElseIf ('{{ action }}' -eq 'Update') {",
+                        "# Download the latest New Relic Infrastructure agent",
+                        "if ('{{ agentFileLocation }}' -ne '') {",
+                            "$msiFileName = '{{ agentFileLocation }}'",
+                            "if ( $msiFileName.Substring(0,4) -eq 'http') {",
+                                "wget $msiFileName -OutFile c:\\Users\\Administrator\\Documents\\newrelic-infra.msi",
+                            "}",
+                            "Else {",
+                                "Copy-Item $msiFileName c:\\Users\\Administrator\\Documents\\newrelic-infra.msi",
+                            "}",
+                        "}",
+                        "Else {",
+                            "wget https://download.newrelic.com/infrastructure_agent/windows/newrelic-infra.msi -OutFile c:\\Users\\Administrator\\Documents\\newrelic-infra.msi",
+                        "}",
+
+                        "# Install the agent",
+                        "msiexec.exe /qn /i c:\\Users\\Administrator\\Documents\\newrelic-infra.msi",
+                    "}",
+                    "Else {",
+                        "# Remove the New Relic Infrastructure agent",
+
+                        "# Stop the agent service",
+                        "net stop newrelic-infra",
+
+                        "# Remove the New Relic registry entry",
+                        "Remove-Item -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Services\\newrelic-infra\"",
+
+                        "# Delete the New Relic directory under Program Files",
+                        "Remove-Item -Recurse -Force \"C:\\Program Files\\New Relic\"",
+                    "}"
+                ]
+            }
+        },
+        {
+            "action":"aws:runShellScript",
+            "precondition":
+            {
+                "StringEquals": ["platformType", "Linux"]
+            },
+            "name":"LinuxInstallNewRelicInfrastructureAgent",
+            "inputs":
+            {
+                "runCommand":
+                [
+                    "#!/bin/bash",
+
+                    "# Add the New Relic License",
+                    "if [ '{{ action }}' == 'Install' ]; then",
+                        "echo \"license_key: {{licenseKey}}\" | sudo tee /etc/newrelic-infra.yml",
+
+                        "# If entered, set the Display name",
+                        "if [ '{{ displayName }}' != '' ]; then",
+                            "echo \"display_name: {{displayName}}\" | sudo tee -a /etc/newrelic-infra.yml",
+                        "fi",
+
+                        "# If entered, set the Proxy",
+                        "if [ '{{ proxy }}' != '' ]; then",
+                            "echo \"proxy: {{proxy}}\" | sudo tee -a /etc/newrelic-infra.yml",
+                        "fi",
+
+                        "# Set verbose",
+                        "echo \"verbose: {{verbose}}\" | sudo tee -a /etc/newrelic-infra.yml",
+
+                        "# If entered, set the Log File",
+                        "if [ '{{ logFile }}' != '' ]; then",
+                            "echo \"log_file: {{logFile}}\" | sudo tee -a /etc/newrelic-infra.yml",
+                        "fi",
+
+                        "# Set log to stdout",
+                        "echo \"log_to_stdout: {{logToStdout}}\" | sudo tee -a /etc/newrelic-infra.yml",
+
+                        "# If entered, set custom attribute(s)",
+                        "if [ '{{ customAttributeOneName }}' != '' ]; then",
+                            "if [ '{{ customAttributeOneValue }}' != '' ]; then",
+                                "echo \"custom_attributes:\" | sudo tee -a /etc/newrelic-infra.yml",
+                                "echo \"  {{customAttributeOneName}}: {{customAttributeOneValue}}\" | sudo tee -a /etc/newrelic-infra.yml",
+                            "fi",
+                        "fi",
+
+                        "if [ '{{ customAttributeOneName }}' != '' ]; then",
+                            "if [ '{{ customAttributeTwoName }}' != '' ]; then",
+                                "if [ '{{ customAttributeTwoValue }}' != '' ]; then",
+                                    "echo \"  {{customAttributeTwoName}}: {{customAttributeTwoValue}}\" | sudo tee -a /etc/newrelic-infra.yml",
+                                "fi",
+                            "fi",
+                        "fi",
+
+                        "if [ '{{ customAttributeOneName }}' != '' ]; then",
+                            "if [ '{{ customAttributeThreeName }}' != '' ]; then",
+                                "if [ '{{ customAttributeThreeValue }}' != '' ]; then",
+                                    "echo \"  {{customAttributeThreeName}}: {{customAttributeThreeValue}}\" | sudo tee -a /etc/newrelic-infra.yml",
+                                "fi",
+                            "fi",
+                        "fi",
+
+                        "# Install the Infrastructure agent based on Linux OS",
+                        "if [ '{{ operatingSystem }}' == 'Amazon Linux or CentOS 6 or RHEL 6' ]; then",
+                            "curl -o /etc/yum.repos.d/newrelic-infra.repo https://download.newrelic.com/infrastructure_agent/linux/yum/el/6/x86_64/newrelic-infra.repo",
+                            "yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'",
+                            "yum install newrelic-infra -y",
+                        "else",
+                            "if [ '{{ operatingSystem }}' == 'CentOS 7 or RHEL 7' ]; then",
+                                "curl -o /etc/yum.repos.d/newrelic-infra.repo https://download.newrelic.com/infrastructure_agent/linux/yum/el/7/x86_64/newrelic-infra.repo",
+                                "yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'",
+                                "yum install newrelic-infra -y",
+                            "else",
+                                "if [ '{{ operatingSystem }}' == 'Ubuntu 14 - Trusty' ]; then",
+                                    "curl https://download.newrelic.com/infrastructure_agent/gpg/newrelic-infra.gpg | sudo apt-key add -",
+                                    "printf \"deb [arch=amd64] https://download.newrelic.com/infrastructure_agent/linux/apt trusty main\" | sudo tee -a /etc/apt/sources.list.d/newrelic-infra.list",
+                                    "sudo apt-get update",
+                                    "sudo apt-get install newrelic-infra -y",
+                                "else",
+                                    "if [ '{{ operatingSystem }}' == 'Ubuntu 16 - Xenial' ]; then",
+                                        "curl https://download.newrelic.com/infrastructure_agent/gpg/newrelic-infra.gpg | sudo apt-key add -",
+                                        "printf \"deb [arch=amd64] https://download.newrelic.com/infrastructure_agent/linux/apt xenial main\" | sudo tee -a /etc/apt/sources.list.d/newrelic-infra.list",
+                                        "sudo apt-get update",
+                                        "sudo apt-get install newrelic-infra -y",
+                                    "fi",
+                                "fi",
+                            "fi",
+                        "fi",
+                    "else",
+                        "# Remove the New Relic Infrastructure agent",
+                        "if [ '{{ action }}' == 'Remove' ]; then",
+                            "if [ '{{ operatingSystem }}' == 'Ubuntu 14 - Trusty' ]; then",
+                                "apt-get remove newrelic-infra -y",
+                            "else",
+                                "if [ '{{ operatingSystem }}' == 'Ubuntu 16 - Xenial' ]; then",
+                                    "apt-get remove newrelic-infra -y",
+                                "else",
+                                    "yum remove newrelic-infra -y",
+                                "fi",
+                            "fi",
+                        "else",
+                            "# Update the  New Relic Infrastructure agent",
+                            "if [ '{{ operatingSystem }}' == 'Ubuntu 14 - Trusty' ]; then",
+                                "sudo apt-get update && sudo apt-get install --only-upgrade newrelic-infra -y",
+                            "else",
+                                "if [ '{{ operatingSystem }}' == 'Ubuntu 16 - Xenial' ]; then",
+                                    "sudo apt-get update && sudo apt-get install --only-upgrade newrelic-infra -y",
+                                "else",
+                                    "yum update newrelic-infra -y",
+                                "fi",
+                            "fi",
+                        "fi",
+                    "fi"
+                ]
+            }
+        }
+    ]
+}
