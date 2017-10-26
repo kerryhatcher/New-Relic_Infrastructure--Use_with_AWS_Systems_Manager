@@ -1,4 +1,5 @@
-# NRI Agent Cross Platform
+# New Relic Agent Run Document to use with AWS SystemS Manager
+# Linux and Windwos Cross Platform
 
 Install, Update, or Remove the New Relic Infrastructure agent for supported Windows and Linux OSes.
 
