@@ -1,4 +1,4 @@
-# New Relic Agent Run Document to use with AWS System Manager
+# New Relic Infrastructure Agent Run Document to use with AWS System Manager
 # Linux and Windows Cross Platform
 
 Install, Update, or Remove the New Relic Infrastructure agent for supported Windows and Linux OSes.
