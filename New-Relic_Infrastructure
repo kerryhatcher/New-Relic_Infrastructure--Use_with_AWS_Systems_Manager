@@ -276,10 +276,12 @@
                         "OS=$(uname -s)",
                         "VER=$(uname -r)",
                     "fi",
+
+
                     
                     "# For Amazon Linux or CentOS 6 or RHEL 6",
-                    "if [[ $OS == *\"Amazon\"* ]]; then",
-                        "echo \"Amazon Linux\"",
+                    "if [[ $OS == *\"Amazon\"* ]] && [ ${VER:0:1} == \"1\" ; then",
+                        "echo \"Amazon Linux 1\"",
                         "OSCHECK=1",
                     "elif [[ $OS == *\"CentOS\"* ]] && [ ${VER:0:1} == \"6\" ]; then",
                         "echo \"CentOS 6\"",
@@ -287,6 +289,10 @@
                     "elif [[ $OS == *\"Red\"* ]] && [ ${VER:0:1} == \"6\" ]; then",
                         "OSCHECK=1",
                         "echo \"Red Hat 6\"",
+
+                    "elif [[ $OS == *\"Amazon\"* ]] && [ ${VER:0:1} == \"2\" ; then",
+                        "echo \"Amazon Linux 2\"",
+                        "OSCHECK=5",
                     
                     "# For CentOS 7 or RHEL 7",
                     "elif [[ $OS == *\"CentOS\"* ]] && [ ${VER:0:1} == \"7\" ]; then",
@@ -361,7 +367,7 @@
                         
                         "case $OSCHECK in",
                             "\"1\")", 
-                                "# Amazon Linux or CentOS 6 or RHEL 6",      
+                                "# Amazon Linux 1 or CentOS 6 or RHEL 6",      
                                 "curl -o /etc/yum.repos.d/newrelic-infra.repo https://download.newrelic.com/infrastructure_agent/linux/yum/el/6/x86_64/newrelic-infra.repo",
                                 "yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'",
                                 "yum install newrelic-infra -y",
@@ -385,6 +391,12 @@
                                 "printf \"deb [arch=amd64] https://download.newrelic.com/infrastructure_agent/linux/apt xenial main\" | sudo tee -a /etc/apt/sources.list.d/newrelic-infra.list",
                                 "sudo apt-get update",
                                 "sudo apt-get install newrelic-infra -y",
+                                ";;",
+                            "\"5\")",
+                                "#Amazon Linux 2",     
+                                "curl -o /etc/yum.repos.d/newrelic-infra.repo https://download.newrelic.com/infrastructure_agent/linux/yum/amazonlinux/2/x86_64/newrelic-infra.repo",
+                                "yum -q makecache -y --disablerepo='*' --enablerepo='newrelic-infra'",
+                                "yum install newrelic-infra -y",
                                 ";;",
                             "*)",
                         "esac",
